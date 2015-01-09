@@ -45,13 +45,13 @@ preferences {
     input("confIpAddr", "string", title:"Enter BEEP IP address",
         required:true, displayDuringSetup: true)
     input("confTcpPort", "number", title:"Enter BEEP TCP port",
-        defaultValue:"8080", required:true, displayDuringSetup:true)
+        defaultValue:"80", required:true, displayDuringSetup:true)
     input("confPassword", "password", title:"Enter your BEEP password",
         required:false, displayDuringSetup:true)
 }
 
 metadata {
-    definition (name:"BEEP Thing", namespace:"statusbits", author:"michel@labelles.ca") {
+    definition (name:"BEEP Thing", namespace:"BeepDial", author:"michel@labelles.ca") {
         capability "Actuator"
         capability "Switch"
         capability "Music Player"
@@ -203,21 +203,21 @@ def play() {
         command = 'command=pl_play'
     }
 
-    return vlcCommand(command, 500)
+    return beepCommand(command, 500)
 }
 
 // MusicPlayer.stop
 def stop() {
     TRACE("stop()")
 
-    return vlcCommand("command=pl_stop", 500)
+    return beepCommand("command=pl_stop", 500)
 }
 
 // MusicPlayer.pause
 def pause() {
     TRACE("pause()")
 
-    return vlcCommand("command=pl_forcepause")
+    return beepCommand("command=pl_forcepause")
 }
 
 // MusicPlayer.playTrack
@@ -225,7 +225,7 @@ def playTrack(uri) {
     TRACE("playTrack(${uri})")
 
     def command = "command=in_play&input=" + URLEncoder.encode(uri, "UTF-8")
-    return vlcCommand(command, 500)
+    return beepCommand(command, 500)
 }
 
 // MusicPlayer.playText
@@ -258,14 +258,14 @@ def restoreTrack(name) {
 def nextTrack() {
     TRACE("nextTrack()")
 
-    return vlcCommand("command=pl_next", 500)
+    return beepCommand("command=pl_next", 500)
 }
 
 // MusicPlayer.previousTrack
 def previousTrack() {
     TRACE("previousTrack()")
 
-    return vlcCommand("command=pl_previous", 500)
+    return beepCommand("command=pl_previous", 500)
 }
 
 // MusicPlayer.setLevel
@@ -278,7 +278,7 @@ def setLevel(number) {
 
     sendEvent(name:"level", value:number)
     def volume = ((number * 512) / 100) as int
-    return vlcCommand("command=volume&val=${volume}")
+    return beepCommand("command=volume&val=${volume}")
 }
 
 // MusicPlayer.mute
@@ -292,7 +292,7 @@ def mute() {
     sendEvent(name:'savedVolume', value:device.currentValue('level'), displayed:false)
     sendEvent(name:'mute', value:'muted')
     sendEvent(name:'level', value:0)
-    return vlcCommand("command=volume&val=0")
+    return beepCommand("command=volume&val=0")
 }
 
 // MusicPlayer.unmute
@@ -330,19 +330,19 @@ def refresh() {
         setDefaults()
     }
 
-    return vlcGetStatus()
+    return beepGetStatus()
 }
 
 def enqueue(uri) {
     TRACE("enqueue(${uri})")
     def command = "command=in_enqueue&input=" + URLEncoder.encode(uri, "UTF-8")
-    return vlcCommand(command)
+    return beepCommand(command)
 }
 
 def seek(trackNumber) {
     TRACE("seek(${trackNumber})")
     def command = "command=pl_play&id=${trackNumber}"
-    return vlcCommand(command, 500)
+    return beepCommand(command, 500)
 }
 
 def playTrackAndResume(uri, duration, volume = null) {
@@ -360,7 +360,7 @@ def playTrackAndRestore(uri, duration, volume = null) {
     def currentMute = device.currentValue('mute')
     def actions = []
     if (currentStatus == 'playing') {
-        actions << vlcCommand("command=pl_stop")
+        actions << beepCommand("command=pl_stop")
         actions << delayHubAction(500)
     }
 
@@ -374,7 +374,7 @@ def playTrackAndRestore(uri, duration, volume = null) {
 
     actions << playTrack(uri)
     actions << delayHubAction((duration + 1) * 1000)
-    actions << vlcCommand("command=pl_stop")
+    actions << beepCommand("command=pl_stop")
     actions << delayHubAction(500)
 
     if (currentMute == 'muted') {
@@ -383,7 +383,7 @@ def playTrackAndRestore(uri, duration, volume = null) {
         actions << setLevel(currentVolume)
     }
 
-    actions << vlcGetStatus()
+    actions << beepGetStatus()
     actions = actions.flatten()
     //log.debug "actions: ${actions}"
 
@@ -413,7 +413,7 @@ def playSoundAndTrack(uri, duration, trackData, volume = null) {
 
 def __testTTS() {
     TRACE("__testTTS()")
-    def text = "VLC for Smart Things is brought to you by Statusbits.com"
+    def text = "beep for Smart Things is brought to you by Michel Labelle"
     return playTextAndResume(text)
 }
 
@@ -430,8 +430,8 @@ private String setNetworkId(ipaddr, port) {
     log.debug "device.deviceNetworkId = ${device.deviceNetworkId}"
 }
 
-private vlcGet(String path) {
-    TRACE("vlcGet(${path})")
+private beepGet(String path) {
+    TRACE("beepGet(${path})")
 
     def headers = [
         HOST:       getHostAddress(),
@@ -458,28 +458,28 @@ private def delayHubAction(ms) {
     return new physicalgraph.device.HubAction("delay ${ms}")
 }
 
-private vlcGetStatus() {
-    return vlcGet("/requests/status.json")
+private beepGetStatus() {
+    return beepGet("/requests/status.json")
 }
 
-private vlcCommand(command, refresh = 0) {
-    TRACE("vlcCommand(${command})")
+private beepCommand(command, refresh = 0) {
+    TRACE("beepCommand(${command})")
 
     def actions = [
-        vlcGet("/requests/status.json?${command}")
+        beepGet("/requests/status.json?${command}")
     ]
 
     if (refresh) {
         actions << delayHubAction(refresh)
-        actions << vlcGetStatus()
+        actions << beepGetStatus()
     }
 
     return actions
 }
 
-private def vlcGetPlaylists() {
+private def beepGetPlaylists() {
     TRACE("getPlaylists()")
-    return vlcGet("/requests/playlist.json")
+    return beepGet("/requests/playlist.json")
 }
 
 private parseHttpHeaders(String headers) {
@@ -501,16 +501,16 @@ private def parseHttpResponse(Map data) {
     def events = []
 
     if (data.containsKey('state')) {
-        def vlcState = data.state
-        //TRACE("VLC state: ${vlcState})")
-        events << createEvent(name:"status", value:vlcState)
-        if (vlcState == 'stopped') {
+        def beepState = data.state
+        //TRACE("beep state: ${beepState})")
+        events << createEvent(name:"status", value:beepState)
+        if (beepState == 'stopped') {
             events << createEvent([name:'trackDescription', value:''])
         }
     }
 
     if (data.containsKey('volume')) {
-        //TRACE("VLC volume: ${data.volume})")
+        //TRACE("beep volume: ${data.volume})")
         def volume = ((data.volume.toInteger() * 100) / 512) as int
         events << createEvent(name:'level', value:volume)
     }
